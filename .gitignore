@@ -5,6 +5,7 @@ dist
 tmp
 out-tsc
 *.tsbuildinfo
+tsconfig.tsbuildinfo
 .expo
 .expo-shared
 
