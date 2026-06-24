@@ -1,0 +1,67 @@
+Update ONLY the Settings page (/settings route, its template, the API endpoint that saves settings, and the database/sheet schema for settings). Do not touch the dashboard, daily_run.py, scoring logic, or any other files unless directly required by these changes.
+
+Here is exactly what needs to change on the Settings page:
+
+---
+
+1. REPLACE "AI Scoring Threshold" SECTION
+Remove the single "Target Score Threshold" slider. Replace it with THREE separate threshold sliders, one per work location type:
+
+- Remote Threshold (default: 75) — label: "Jobs marked as Remote"
+- Hybrid Threshold (default: 82) — label: "Jobs marked as Hybrid"
+- On-Site Threshold (default: 90) — label: "Jobs marked as On-Site"
+
+Each slider should go from 0–100 and show its current numeric value next to it, just like the existing slider does. Store all three values in settings as: score_threshold_remote, score_threshold_hybrid, score_threshold_onsite.
+
+In the scoring pipeline, when a job is evaluated, detect its work location type from the job data (check job_is_remote flag and description keywords like "hybrid", "on-site", "in-office") and apply the matching threshold to decide whether to tailor. If work type cannot be determined, default to the On-Site threshold (most conservative).
+
+---
+
+2. ADD "Minimum Salary" FIELD to the Job Search Filters section
+Add a number input field labeled "Minimum Salary ($)" with a subtext: "Jobs with a posted salary below this amount will be scored but flagged. Jobs with no salary listed will be included but marked 'Salary Not Posted'."
+
+- Default value: 0 (no filter)
+- Store as: min_salary in settings
+- In the pipeline: if a job has a posted salary max below min_salary, add a red "Below Min Salary" badge on the dashboard. If no salary is posted at all, add a yellow "Salary Not Posted" badge. Do not exclude jobs based on salary — only flag them visually.
+
+---
+
+3. REPLACE the "Locations" text box with a structured Location Targeting section
+Remove the plain text "one location per line" box. Replace it with:
+
+a) A repeatable "City" input — the user can add one or more cities (e.g. "Salt Lake City, UT"). Include an "+ Add City" button to add more city fields, and an "×" button to remove each one. Minimum 1 city required.
+
+b) Below the city list, a single "Mile Radius" slider — range 0 to 100 miles, default 25, with the current value shown (e.g. "Within 25 miles"). This radius applies to ALL cities equally.
+
+c) A note below: "Remote jobs ignore location filters and are always included."
+
+Store cities as a JSON array in settings (location_cities) and the radius as location_radius_miles.
+
+---
+
+4. RENAME "Search Queries" to "Job Titles / Search Queries"
+No functional change needed here — just update the label and subtext to: "One job title or search query per line. These are sent directly to the job APIs."
+
+---
+
+5. ADD a new "Candidate Context" section at the bottom of the Settings page, above the Save button
+This is a free-text area where the user can describe in plain English what they are looking for. Label it "What I'm Looking For (Candidate Context)". Subtext: "This context is passed directly to the AI when scoring jobs. Be specific — mention industries you prefer, types of companies, deal-breakers, career goals, or anything else that should influence fit scores."
+
+- Textarea, ~6 rows tall, full width
+- Placeholder text: "e.g. I'm looking for an Account Manager role at a SaaS or tech company, ideally with a defined sales territory. I prefer companies under 500 employees. I want to avoid roles that are purely renewals-focused with no expansion quota. I'm open to travel up to 25%. My background is in HR tech and fintech."
+- Store as: candidate_context in settings (string, up to 2000 chars — add a character counter)
+- In the scoring prompt sent to Claude, append this block after the resume and before the job description:
+
+  "ADDITIONAL CANDIDATE PREFERENCES (consider these when scoring fit):
+  {candidate_context}"
+
+  If candidate_context is empty, omit this block entirely.
+
+---
+
+IMPLEMENTATION NOTES
+- All five changes must be reflected in: the settings UI template, the POST /api/settings endpoint (or equivalent save route), the settings schema/database model, and any place in the codebase that reads these settings values.
+- Keep the existing fields that are NOT mentioned above exactly as they are: Remote Only toggle, Employment Type checkboxes. Just move them around if needed to accommodate the new layout.
+- The page should still have a single "Save Configuration" button at the top right that saves all fields at once.
+- Match the existing visual style exactly: same card layout, same fonts, same color scheme, same Bootstrap/Tailwind classes already in use.
+- After making all changes, restart the server and take a screenshot of the updated Settings page to confirm it looks correct before declaring done.

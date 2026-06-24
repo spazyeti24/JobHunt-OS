@@ -1,0 +1,851 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Job Hunt Automation API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: jobs
+    description: Job listing operations
+  - name: settings
+    description: App settings operations
+  - name: resume
+    description: Resume operations
+  - name: runs
+    description: Job search run operations
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /jobs:
+    get:
+      operationId: listJobs
+      tags: [jobs]
+      summary: List all jobs
+      parameters:
+        - name: minScore
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: employmentType
+          in: query
+          schema:
+            type: string
+        - name: locationTypes
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+              enum: [remote, hybrid, onsite]
+          style: form
+          explode: false
+        - name: statuses
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          style: form
+          explode: false
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of jobs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Job"
+
+    delete:
+      operationId: deleteAllJobs
+      tags: [jobs]
+      summary: Delete all jobs
+      responses:
+        "204":
+          description: All jobs deleted
+
+  /jobs/{id}:
+    get:
+      operationId: getJob
+      tags: [jobs]
+      summary: Get a single job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+        "404":
+          description: Not found
+
+    patch:
+      operationId: updateJob
+      tags: [jobs]
+      summary: Update job status or notes
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JobUpdate"
+      responses:
+        "200":
+          description: Updated job
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+    delete:
+      operationId: deleteJob
+      tags: [jobs]
+      summary: Delete (hide) a job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /jobs/{id}/retailor:
+    post:
+      operationId: retailorJob
+      tags: [jobs]
+      summary: Re-tailor a job's resume and cover letter
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Retailored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Job"
+
+  /jobs/stats:
+    get:
+      operationId: getJobStats
+      tags: [jobs]
+      summary: Get aggregate stats for dashboard
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobStats"
+
+  /jobs/rescore-failed:
+    post:
+      operationId: rescoreFailedJobs
+      tags: [jobs]
+      summary: Re-score all jobs that failed scoring due to API errors
+      responses:
+        "200":
+          description: Rescore results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RescoreFailedResult"
+
+  /jobs/rescore-range:
+    post:
+      operationId: rescoreJobsByRange
+      tags: [jobs]
+      summary: Re-score all jobs whose fit score falls within a given range
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RescoreRangeBody"
+      responses:
+        "200":
+          description: Rescore results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RescoreFailedResult"
+        "409":
+          description: A rescore is already in progress
+
+  /jobs/rescore/cancel:
+    post:
+      operationId: cancelRescore
+      tags: [jobs]
+      summary: Cancel an in-progress rescore operation
+      responses:
+        "200":
+          description: Cancellation requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelRescoreResult"
+        "409":
+          description: No rescore is currently running
+
+  /jobs/rescore-failed/progress:
+    get:
+      operationId: getRescoreProgress
+      tags: [jobs]
+      summary: Get the current progress of an in-progress rescore operation
+      responses:
+        "200":
+          description: Progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RescoreProgress"
+
+  /settings:
+    get:
+      operationId: getSettings
+      tags: [settings]
+      summary: Get current settings
+      responses:
+        "200":
+          description: Settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+    patch:
+      operationId: updateSettings
+      tags: [settings]
+      summary: Update settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettingsUpdate"
+      responses:
+        "200":
+          description: Updated settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Settings"
+
+  /resume:
+    get:
+      operationId: getResume
+      tags: [resume]
+      summary: Get master resume markdown
+      responses:
+        "200":
+          description: Resume content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resume"
+
+    put:
+      operationId: updateResume
+      tags: [resume]
+      summary: Update master resume
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResumeInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Resume"
+
+  /resume/extract-skills:
+    post:
+      operationId: extractResumeSkills
+      tags: [resume]
+      summary: Extract skills from resume using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExtractSkillsInput"
+      responses:
+        "200":
+          description: Extracted skills
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractSkillsResult"
+
+  /resume/merge-experience:
+    post:
+      operationId: mergeResumeExperience
+      tags: [resume]
+      summary: Merge new experience into the resume using AI
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MergeExperienceInput"
+      responses:
+        "200":
+          description: Updated resume text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MergeExperienceResult"
+
+  /runs:
+    get:
+      operationId: listRuns
+      tags: [runs]
+      summary: List recent run logs
+      responses:
+        "200":
+          description: Runs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Run"
+
+    post:
+      operationId: triggerRun
+      tags: [runs]
+      summary: Trigger an immediate job search run
+      responses:
+        "202":
+          description: Run started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunTriggerResult"
+
+  /runs/schedule:
+    get:
+      operationId: getRunSchedule
+      tags: [runs]
+      summary: Get the next scheduled run time
+      responses:
+        "200":
+          description: Next scheduled run info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunSchedule"
+
+  /runs/{id}:
+    get:
+      operationId: getRun
+      tags: [runs]
+      summary: Get a run log by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Run log
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Run"
+
+  /runs/{id}/cancel:
+    post:
+      operationId: cancelRun
+      tags: [runs]
+      summary: Cancel an in-progress run
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cancellation registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelRunResult"
+        "404":
+          description: Run not found
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Job:
+      type: object
+      required:
+        - id
+        - jobId
+        - title
+        - company
+        - location
+        - employmentType
+        - isRemote
+        - workLocationType
+        - fitScore
+        - status
+        - createdAt
+      properties:
+        id:
+          type: integer
+        jobId:
+          type: string
+        title:
+          type: string
+        company:
+          type: string
+        location:
+          type: string
+        employmentType:
+          type: string
+        isRemote:
+          type: boolean
+        workLocationType:
+          type: string
+          enum: [remote, hybrid, onsite]
+        salary:
+          type: ["string", "null"]
+        fitScore:
+          type: integer
+        scoreRationale:
+          type: ["string", "null"]
+        mustHaveMatches:
+          type: ["string", "null"]
+        gaps:
+          type: ["string", "null"]
+        redFlags:
+          type: ["string", "null"]
+        status:
+          type: string
+        applyUrl:
+          type: ["string", "null"]
+        jobDescription:
+          type: ["string", "null"]
+        tailoredResume:
+          type: ["string", "null"]
+        coverLetter:
+          type: ["string", "null"]
+        topKeywords:
+          type: ["string", "null"]
+        notes:
+          type: ["string", "null"]
+        source:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+        appliedAt:
+          type: ["string", "null"]
+
+    JobUpdate:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Applied, Interviewing, Offer, Rejected, Hidden, Scored, Tailored, "Below threshold"]
+        notes:
+          type: string
+
+    JobStats:
+      type: object
+      required:
+        - total
+        - tailored
+        - applied
+        - avgScore
+        - highFit
+        - byStatus
+        - failedScoring
+      properties:
+        total:
+          type: integer
+        tailored:
+          type: integer
+        applied:
+          type: integer
+        avgScore:
+          type: number
+        highFit:
+          type: integer
+        failedScoring:
+          type: integer
+        byStatus:
+          type: array
+          items:
+            type: object
+            required: [status, count]
+            properties:
+              status:
+                type: string
+              count:
+                type: integer
+
+    RescoreRangeBody:
+      type: object
+      required:
+        - minScore
+        - maxScore
+      properties:
+        minScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        maxScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+
+    RescoreFailedResult:
+      type: object
+      required:
+        - attempted
+        - succeeded
+        - failed
+        - canceled
+      properties:
+        attempted:
+          type: integer
+        succeeded:
+          type: integer
+        failed:
+          type: integer
+        canceled:
+          type: boolean
+
+    RescoreProgress:
+      type: object
+      required:
+        - isRunning
+        - total
+        - processed
+      properties:
+        isRunning:
+          type: boolean
+        total:
+          type: integer
+        processed:
+          type: integer
+
+    Settings:
+      type: object
+      required:
+        - id
+        - scoreThreshold
+        - scoreThresholdRemote
+        - scoreThresholdHybrid
+        - scoreThresholdOnsite
+        - minSalary
+        - employmentTypeFilter
+        - remoteOnly
+        - includeRemote
+        - includeHybrid
+        - includeOnsite
+        - searchQueries
+        - locations
+        - locationCities
+        - locationRadiusMiles
+        - candidateContext
+        - coverLetterContext
+        - recurringEnabled
+        - scheduleTime
+        - scheduleFrequencyDays
+      properties:
+        id:
+          type: integer
+        scoreThreshold:
+          type: integer
+        scoreThresholdRemote:
+          type: integer
+        scoreThresholdHybrid:
+          type: integer
+        scoreThresholdOnsite:
+          type: integer
+        minSalary:
+          type: integer
+        employmentTypeFilter:
+          type: string
+        remoteOnly:
+          type: boolean
+        includeRemote:
+          type: boolean
+        includeHybrid:
+          type: boolean
+        includeOnsite:
+          type: boolean
+        searchQueries:
+          type: string
+        locations:
+          type: string
+        locationCities:
+          type: string
+        locationRadiusMiles:
+          type: integer
+        candidateContext:
+          type: string
+        coverLetterContext:
+          type: string
+        lastRunAt:
+          type: ["string", "null"]
+        recurringEnabled:
+          type: boolean
+        scheduleTime:
+          type: string
+        scheduleFrequencyDays:
+          type: integer
+        jsearchDatePosted:
+          type: string
+          enum: [today, 3days, week, month]
+        jsearchPages:
+          type: integer
+          minimum: 1
+          maximum: 5
+        adzunaPages:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    SettingsUpdate:
+      type: object
+      properties:
+        scoreThreshold:
+          type: integer
+        scoreThresholdRemote:
+          type: integer
+        scoreThresholdHybrid:
+          type: integer
+        scoreThresholdOnsite:
+          type: integer
+        minSalary:
+          type: integer
+        employmentTypeFilter:
+          type: string
+        remoteOnly:
+          type: boolean
+        includeRemote:
+          type: boolean
+        includeHybrid:
+          type: boolean
+        includeOnsite:
+          type: boolean
+        searchQueries:
+          type: string
+        locations:
+          type: string
+        locationCities:
+          type: string
+        locationRadiusMiles:
+          type: integer
+        candidateContext:
+          type: string
+        coverLetterContext:
+          type: string
+        recurringEnabled:
+          type: boolean
+        scheduleTime:
+          type: string
+        scheduleFrequencyDays:
+          type: integer
+        jsearchDatePosted:
+          type: string
+          enum: [today, 3days, week, month]
+        jsearchPages:
+          type: integer
+          minimum: 1
+          maximum: 5
+        adzunaPages:
+          type: integer
+          minimum: 1
+          maximum: 5
+
+    Resume:
+      type: object
+      required:
+        - content
+        - updatedAt
+      properties:
+        content:
+          type: string
+        updatedAt:
+          type: string
+        skills:
+          type: ["string", "null"]
+        additionalExperience:
+          type: ["string", "null"]
+
+    ResumeInput:
+      type: object
+      required:
+        - content
+      properties:
+        content:
+          type: string
+        skills:
+          type: string
+        additionalExperience:
+          type: string
+
+    ExtractSkillsInput:
+      type: object
+      required:
+        - resumeContent
+      properties:
+        resumeContent:
+          type: string
+
+    ExtractSkillsResult:
+      type: object
+      required:
+        - skills
+      properties:
+        skills:
+          type: array
+          items:
+            type: object
+            required: [category, skills]
+            properties:
+              category:
+                type: string
+              skills:
+                type: array
+                items:
+                  type: string
+
+    MergeExperienceInput:
+      type: object
+      required:
+        - currentResume
+        - newExperience
+      properties:
+        currentResume:
+          type: string
+        newExperience:
+          type: string
+
+    MergeExperienceResult:
+      type: object
+      required:
+        - updatedResume
+      properties:
+        updatedResume:
+          type: string
+
+    Run:
+      type: object
+      required:
+        - id
+        - status
+        - startedAt
+      properties:
+        id:
+          type: integer
+        status:
+          type: string
+        startedAt:
+          type: string
+        finishedAt:
+          type: ["string", "null"]
+        jobsFetched:
+          type: ["integer", "null"]
+        jobsScored:
+          type: ["integer", "null"]
+        jobsTailored:
+          type: ["integer", "null"]
+        errorMessage:
+          type: ["string", "null"]
+        logLines:
+          type: ["string", "null"]
+
+    CancelRescoreResult:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+
+    RunTriggerResult:
+      type: object
+      required:
+        - message
+        - runId
+      properties:
+        message:
+          type: string
+        runId:
+          type: integer
+
+    RunSchedule:
+      type: object
+      required:
+        - nextRunAt
+      properties:
+        nextRunAt:
+          type: ["string", "null"]
+
+    CancelRunResult:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
