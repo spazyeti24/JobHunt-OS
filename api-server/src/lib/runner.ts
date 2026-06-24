@@ -63,23 +63,40 @@ export async function startRun(runId: number): Promise<void> {
 
     // Step 1: Fetch jobs — check for cancellation between each individual fetch
     log("Step 1: Fetching jobs from job boards...");
+
+    const hasRapidApi = !!process.env.RAPIDAPI_KEY;
+    const hasAdzuna = !!(process.env.ADZUNA_APP_ID && process.env.ADZUNA_APP_KEY);
+    const hasAnthropicKey = !!process.env.ANTHROPIC_API_KEY;
+
+    if (!hasRapidApi) log("ERROR: RAPIDAPI_KEY not set — JSearch skipped. Add it to your .env to enable JSearch job fetching.");
+    if (!hasAdzuna) log("ERROR: ADZUNA_APP_ID or ADZUNA_APP_KEY not set — Adzuna skipped. Add them to your .env to enable Adzuna job fetching.");
+    if (!hasAnthropicKey) {
+      log("ERROR: ANTHROPIC_API_KEY not set — scoring and tailoring will fail. Add it to your .env.");
+      await finishRun(runId, { jobsFetched: 0, jobsScored: 0, jobsTailored: 0, logs });
+      return;
+    }
+
     const allRaw = [];
 
     for (const query of queries) {
       for (const location of locations) {
         if (await checkCancelled(runId, logs)) return;
 
-        log(`  Fetching JSearch: "${query}" in ${location}`);
-        const jsJobs = await fetchJSearch(query, location, employmentTypes, settings.jsearchDatePosted, settings.jsearchPages);
-        allRaw.push(...jsJobs);
-        log(`  JSearch returned ${jsJobs.length} jobs`);
+        if (hasRapidApi) {
+          log(`  Fetching JSearch: "${query}" in ${location}`);
+          const jsJobs = await fetchJSearch(query, location, employmentTypes, settings.jsearchDatePosted, settings.jsearchPages);
+          allRaw.push(...jsJobs);
+          log(`  JSearch returned ${jsJobs.length} jobs`);
+        }
 
         if (await checkCancelled(runId, logs)) return;
 
-        log(`  Fetching Adzuna: "${query}" in ${location}`);
-        const azJobs = await fetchAdzuna(query, location, settings.adzunaPages);
-        allRaw.push(...azJobs);
-        log(`  Adzuna returned ${azJobs.length} jobs`);
+        if (hasAdzuna) {
+          log(`  Fetching Adzuna: "${query}" in ${location}`);
+          const azJobs = await fetchAdzuna(query, location, settings.adzunaPages);
+          allRaw.push(...azJobs);
+          log(`  Adzuna returned ${azJobs.length} jobs`);
+        }
       }
     }
 
@@ -104,9 +121,10 @@ export async function startRun(runId: number): Promise<void> {
     }
 
     // Step 3: Score each job
-    log("Step 2: Scoring jobs with Claude Haiku...");
+    log(`Step 2: Scoring ${newJobs.length} new jobs with Claude Sonnet...`);
     let scored = 0;
     let tailored = 0;
+    let skippedByLocation = 0;
 
     for (const raw of newJobs) {
       // Check for cancellation before each job
@@ -122,6 +140,7 @@ export async function startRun(runId: number): Promise<void> {
 
       if (!locationEnabled) {
         log(`  Skipping (${locationType} jobs disabled in settings): ${raw.title} at ${raw.company}`);
+        skippedByLocation++;
         continue;
       }
 
@@ -246,7 +265,7 @@ export async function startRun(runId: number): Promise<void> {
       await db.update(settingsTable).set({ lastRunAt: new Date() }).where(eq(settingsTable.id, s.id));
     }
 
-    log(`Run complete. Scored: ${scored}, Tailored: ${tailored}`);
+    log(`Summary: ${unique.length} fetched, ${newJobs.length} new, ${skippedByLocation} skipped by location filter, ${scored} scored, ${tailored} tailored.`);
     await finishRun(runId, { jobsFetched: unique.length, jobsScored: scored, jobsTailored: tailored, logs });
   } catch (err) {
     // If the abort signal fired, mark as cancelled rather than failed

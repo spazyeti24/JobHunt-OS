@@ -53,7 +53,7 @@ Title: ${job.title}
 Company: ${job.company}
 Description:
 <<<
-${(job.jobDescription ?? "").slice(0, 3000)}
+${(job.jobDescription ?? "").slice(0, 6000)}
 >>>
 
 Return JSON exactly in this shape:
@@ -65,14 +65,14 @@ Return JSON exactly in this shape:
 }`;
 
   const systemPrompt = hasSkills
-    ? "You are an expert career coach who tailors Account Manager resumes and cover letters. You never invent achievements, metrics, employers, or dates. You preserve all factual content from the source resume and only re-order, re-phrase, and re-emphasize. You write in the candidate's own voice based on their resume. When structured skill tags are provided, you use them precisely to populate the Skills Match section — matching job requirements to the candidate's exact tagged skills and flagging genuine gaps. Output ONLY valid JSON, no prose, no markdown fences."
-    : "You are an expert career coach who tailors Account Manager resumes and cover letters. You never invent achievements, metrics, employers, or dates. You preserve all factual content from the source resume and only re-order, re-phrase, and re-emphasize. You write in the candidate's own voice based on their resume. Output ONLY valid JSON, no prose, no markdown fences.";
+    ? "You are an expert career coach who tailors resumes and cover letters for any role. You never invent achievements, metrics, employers, or dates. You preserve all factual content from the source resume and only re-order, re-phrase, and re-emphasize. You write in the candidate's own voice based on their resume. When structured skill tags are provided, you use them precisely to populate the Skills Match section — matching job requirements to the candidate's exact tagged skills and flagging genuine gaps. Output ONLY valid JSON, no prose, no markdown fences."
+    : "You are an expert career coach who tailors resumes and cover letters for any role. You never invent achievements, metrics, employers, or dates. You preserve all factual content from the source resume and only re-order, re-phrase, and re-emphasize. You write in the candidate's own voice based on their resume. Output ONLY valid JSON, no prose, no markdown fences.";
 
   try {
     const msg = await anthropic.messages.create(
       {
-        model: "claude-sonnet-4-5",
-        max_tokens: 4000,
+        model: "claude-sonnet-4-6",
+        max_tokens: 6000,
         temperature: 0.4,
         system: systemPrompt,
         messages: [{ role: "user", content: prompt }],
@@ -100,7 +100,7 @@ Return JSON exactly in this shape:
       await new Promise((r) => setTimeout(r, delay));
       return tailorJob(job, masterResume, scoreThreshold, coverLetterContext, attempt + 1, skills, signal);
     }
-    logger.error({ err }, "Tailoring failed after retries");
+    logger.error({ err }, "Tailoring failed after retries — check ANTHROPIC_API_KEY if this persists");
     return { tailoredResume: null, coverLetter: null, topKeywords: null };
   }
 }

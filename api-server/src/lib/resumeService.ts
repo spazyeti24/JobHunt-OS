@@ -1,46 +1,11 @@
 import { eq } from "drizzle-orm";
 import { db, resumeTable } from "@workspace/db";
 
-const DEFAULT_RESUME = `# Your Name
-**Account Manager | Strategic Partnerships | Customer Success**
+const DEFAULT_RESUME = `# No resume uploaded yet
 
-📧 your.email@example.com | 📞 (555) 000-0000 | LinkedIn: linkedin.com/in/yourname | Location: Austin, TX
+**Upload your resume on the Master Resume page to get started.**
 
----
-
-## Summary
-
-Results-driven Account Manager with 7+ years of experience managing enterprise accounts, driving revenue growth, and building long-term client relationships. Proven track record of exceeding quota, expanding accounts, and translating complex solutions into client value.
-
----
-
-## Experience
-
-### Senior Account Manager — Acme Corp (2020–Present)
-- Managed portfolio of 35 enterprise accounts totaling $8.2M ARR
-- Achieved 127% of quota in FY2023 through strategic upselling and new logo acquisition
-- Reduced churn by 18% via proactive QBR program and executive stakeholder alignment
-- Led cross-functional teams (CS, Product, Legal) to close 3 multi-year contracts >$500K each
-
-### Account Manager — Beta Solutions (2017–2020)
-- Grew mid-market book of business from $1.2M to $3.4M ARR over 3 years
-- Negotiated and closed 40+ new contracts ranging from $25K–$200K
-- Maintained 94% net retention rate across 60-account portfolio
-- Collaborated with SDRs to source and qualify pipeline, contributing 30% of personal new business
-
----
-
-## Skills
-- CRM: Salesforce, HubSpot, Gainsight
-- Sales methodologies: MEDDIC, Challenger, SPIN
-- Account planning, QBR facilitation, executive presentations
-- Contract negotiation, renewal management, expansion selling
-- Cross-functional collaboration, project management
-
----
-
-## Education
-**B.S. Business Administration** — University of Texas at Austin (2017)
+Go to Master Resume in the sidebar and either paste your resume in Markdown format or upload a PDF. All AI scoring and tailoring will use this document as the source of truth.
 `;
 
 export async function getResume() {

@@ -87,7 +87,7 @@ Location: ${location} (remote: ${isRemote})
 Employment type: ${employmentType}
 Description:
 <<<
-${jobDescription.slice(0, 3000)}
+${jobDescription.slice(0, 6000)}
 >>>
 
 Return JSON exactly in this shape:
@@ -110,11 +110,11 @@ Be honest. Do not inflate scores.`;
   try {
     const msg = await anthropic.messages.create(
       {
-        model: "claude-haiku-4-5",
-        max_tokens: 800,
+        model: "claude-sonnet-4-6",
+        max_tokens: 1500,
         temperature: 0,
         system:
-          "You are a precise hiring fit evaluator for Account Manager roles. You return ONLY valid JSON, no prose, no markdown fences.",
+          `You are an expert hiring fit evaluator. Assess how well this candidate fits the role of ${jobTitle} at ${company}, based on their resume and the job description. You return ONLY valid JSON, no prose, no markdown fences.`,
         messages: [{ role: "user", content: prompt }],
       },
       { signal }
@@ -152,10 +152,14 @@ Be honest. Do not inflate scores.`;
         signal
       );
     }
-    logger.error({ err }, "Scoring failed after retries");
+    if (err instanceof Error && err.message.includes("API key")) {
+      logger.error("ANTHROPIC_API_KEY is invalid or missing — scoring cannot proceed.");
+    } else {
+      logger.error({ err }, "Scoring failed after retries");
+    }
     return {
       score: 0,
-      scoreRationale: "Score failed due to API error.",
+      scoreRationale: "Score failed due to API error. Check ANTHROPIC_API_KEY in your .env.",
       mustHaveMatches: [],
       gaps: [],
       redFlags: [],
